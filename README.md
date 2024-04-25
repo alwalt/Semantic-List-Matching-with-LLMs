@@ -19,3 +19,16 @@ Ensure you have Python installed, then run the following commands to set up the 
 # Install necessary libraries
 pip install pydantic langchain-community fuzzywuzzy
 
+## Example
+# Example command-line usage
+[forms/BTSC Metadata Intake Form] $ python3 match.py
+Matching: Dose 1 (non-radiation)
+LLM Match: Treatment 1 dose
+Match found!
+ Dose 1 (non-radiation) <---> Treatment 1 dose
+--------------
+Matching: Status (stts_name)
+LLM Match: Status of samples (Available, Not-available)
+Match found!
+ Status (stts_name) <---> Status of samples (Available, Not-available)
+--------------
