@@ -15,7 +15,5 @@ Ensure you have Python installed, then run the following commands to set up the 
 
 ```bash
 # Install necessary libraries
-pip install spacy pydantic langchain-community fuzzywuzzy
+pip install pydantic langchain-community fuzzywuzzy
 
-# Download the necessary spaCy model
-python -m spacy download en_core_web_md
