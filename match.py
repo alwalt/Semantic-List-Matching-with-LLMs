@@ -95,7 +95,8 @@ def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatc
             print('---------------')
     return matches
 
-# Lists of items and potential matches
+#Example 
+#Lists of items to match
 first_list = [
     "Dose 1 (non-radiation)",
     "Status (stts_name)",
@@ -122,6 +123,7 @@ first_list = [
     "Derivation count"
 ]
 
+#List of potential matches
 second_list = [
     "Timestamp",
     "PI name",
