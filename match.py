@@ -1,4 +1,3 @@
-import spacy
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_community.llms import Ollama
