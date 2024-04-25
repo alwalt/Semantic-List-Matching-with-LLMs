@@ -89,7 +89,7 @@ def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatc
     return matches
 
 #Example 
-#Lists of items to match
+#List of terms that need matching
 first_list = [
     "Dose 1 (non-radiation)",
     "Status (stts_name)",
