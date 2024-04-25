@@ -5,7 +5,6 @@ This project utilizes Large Language Models (LLMs) and fuzzy matching to perform
 
 ## Dependencies
 - Python 3.8 or higher
-- spaCy
 - Pydantic
 - LangChain's LLMs (langchain_community)
 - fuzzywuzzy
