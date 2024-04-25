@@ -6,14 +6,9 @@ from langchain.prompts import PromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from fuzzywuzzy import fuzz
 
-# Load spaCy model
-nlp = spacy.load("en_core_web_md")
-
 # Pydantic model to represent each item and its match
 class ItemMatch(BaseModel):
-    #item: str = Field(description="The item from the first list")
     match: Optional[str] = Field(None, description="The matching term from the list")
-    #match: str = Field(description="The matching item from the second list. None if no match")
 
 # Initialize the LLM model (Ollama)
 model = Ollama(model="wizardlm2:7b", temperature=0)
@@ -54,7 +49,6 @@ def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatc
         quoted_items = [f'\'{term}\'' for term in available_matches]
         query = f"Find the best semantic match for the term '{item}' from the following list: {', '.join(quoted_items)}. If no match set as 'None'. Ouput as JSON"
         print('Matching:',item) 
-        #print(query)
         
         # Set up the parser to convert model output to Pydantic object
         parser = PydanticOutputParser(pydantic_object=ItemMatch)
@@ -185,7 +179,6 @@ second_list = [
     "Subject unique identifiers for this experimental group separated by comma followed by a space (EX. 112, 113, 114, 115).1",
     "Cage number (s) separated by comma to match the order of your input for the 'Subject unique identifier' field, (EX. 112, 113, 114, 115).1"
 ]
-
 
 # Find matches using the LLM model
 match_results = find_matches(first_list, second_list)
