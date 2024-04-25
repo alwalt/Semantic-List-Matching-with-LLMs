@@ -12,16 +12,16 @@ This tool utilizes a Large Language Model (LLM) and fuzzy matching to perform se
 - fuzzywuzzy
 
 ## Installation
-
 Ensure you have Python installed, then run the following commands to set up the project environment:
 
 ```bash
 # Install necessary libraries
 pip install pydantic langchain-community fuzzywuzzy
+```
 
-## Example
+## Example 
 # Example command-line usage
-[forms/BTSC Metadata Intake Form] $ python3 match.py
+```bash python3 match.py
 Matching: Dose 1 (non-radiation)
 LLM Match: Treatment 1 dose
 Match found!
@@ -32,3 +32,4 @@ LLM Match: Status of samples (Available, Not-available)
 Match found!
  Status (stts_name) <---> Status of samples (Available, Not-available)
 --------------
+```
