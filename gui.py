@@ -50,13 +50,15 @@ class ExcelHeaderReader(QWidget):
             error_dialog.exec_()
     
     def displayHeaders(self, headers):
-        max_length = 20  # Maximum length of header to display
+        max_length = 50  # Maximum length of header to display
         self.tableWidget.setRowCount(len(headers))
         self.tableWidget.setColumnCount(1)
-        self.tableWidget.setHorizontalHeaderLabels(['Headers'])
+        self.tableWidget.setHorizontalHeaderLabels(['Headers that Need Matching'])
         for i, header in enumerate(headers):
             truncated_header = (header[:max_length] + '...') if len(header) > max_length else header
-            self.tableWidget.setItem(i, 0, QTableWidgetItem(truncated_header))
+            item = QTableWidgetItem(truncated_header)
+            item.setToolTip(header)  # Set the full header as the tooltip
+            self.tableWidget.setItem(i, 0, item)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
