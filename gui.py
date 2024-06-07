@@ -33,7 +33,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         # Button to select second Excel file
         self.pushButton2 = QtWidgets.QPushButton(Dialog)
         self.pushButton2.setGeometry(QtCore.QRect(700, 50, 200, 50))
-        self.pushButton2.setText("Select GT Excel File")
+        self.pushButton2.setText("Select MetaData File")
 
 
         # Table to display data of the first file
