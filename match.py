@@ -11,7 +11,8 @@ class ItemMatch(BaseModel):
     match: Optional[str] = Field(None, description="The matching term from the list")
 
 # Initialize the LLM model (Ollama)
-model = Ollama(model="wizardlm2:7b", temperature=0)
+#wizardlm2:7b
+model = Ollama(model="wizardlm2:7b", base_url="http://localhost:11434/", temperature=0)
 
 def find_best_fuzzy_match(target, candidates, threshold=90):
     """
@@ -39,6 +40,8 @@ def find_best_fuzzy_match(target, candidates, threshold=90):
 
 def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatch]:
     matches = []
+    #Kayvon: Dict of matches of item -> best match
+    dict_matches = {}
     # Use a copy of the second list to manipulate without altering the original list outside the function
     available_matches = second_list.copy()
     
@@ -74,6 +77,7 @@ def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatc
             best_match, score = match_result
             if score >= threshold:
                 print('Match found!\n', item, '<--->', best_match)
+                dict_matches[item] = best_match #Kayvon: Dict of matches of best match -> item
                 matches.append(ItemMatch(match=best_match))
                 available_matches.remove(best_match)
                 print('--------------')
@@ -86,7 +90,7 @@ def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatc
             # Append without a match or if the match is not in the available list
             matches.append(ItemMatch(match=None))
             print('---------------')
-    return matches
+    return matches, dict_matches
 
 #Example 
 #List of terms that need matching
@@ -181,7 +185,8 @@ second_list = [
 ]
 
 # Find matches using the LLM model
-match_results = find_matches(first_list, second_list)
+if __name__ == "__main__":
+    match_results = find_matches(first_list, second_list)
 
 
 
