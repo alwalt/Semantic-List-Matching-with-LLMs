@@ -5,8 +5,11 @@ import pandas as pd
 from match import find_matches
 import threading
 
-class Ui_Dialog(object):
+class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signals and slots for safe threading
+    # Signal to notify the main thread to update the UI
+    update_ui_signal = QtCore.pyqtSignal()
     def __init__(self):
+        super().__init__()
         self.data1 = pd.DataFrame()
         self.data2 = pd.DataFrame()
         self.list1 = ""
@@ -14,7 +17,9 @@ class Ui_Dialog(object):
         self.matches = []
         self.replace_text = pd.DataFrame()
         self.store = set()
-        self.highlight_done = False
+        # Connect the signal to the slot
+        self.update_ui_signal.connect(self.show_popup)
+        self.adding_different_data = False
               
     def setupUi(self, Dialog):
         Dialog.setObjectName("Test")
@@ -51,7 +56,7 @@ class Ui_Dialog(object):
         self.pushButton1.clicked.connect(self.select_first_file)
         self.pushButton2.clicked.connect(self.select_second_file)
         self.pushButton4.clicked.connect(self.highlight_matches)
-
+        
         #Update Excel file with new information
         self.pushButton3 = QtWidgets.QPushButton(Dialog)
         self.pushButton3.setGeometry(QtCore.QRect(370, 20, 200, 50))
@@ -69,8 +74,16 @@ class Ui_Dialog(object):
             self.data1 = df  
             self.list1 = df.astype(str).values.flatten().tolist()
             self.display_data(self.table1, self.data1)
-            
-            
+        #Ensure Popup file is cleared if new file is selected
+        self.replace_text = pd.DataFrame()
+        #If the user selects a new file, reset the highlighting process
+        if self.adding_different_data:
+            for i in range(self.table2.rowCount()):
+                for j in range(self.table2.columnCount()):
+                    item = self.table2.item(i, j)
+                    if item:
+                        item.setBackground(QtGui.QColor("white"))
+            self.adding_different_data = False
 
     def select_second_file(self):
         file, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select verified Excel file", "", "Excel file (*.xlsx)")
@@ -79,7 +92,6 @@ class Ui_Dialog(object):
             self.data2 = df 
             self.list2 = df.astype(str).values.flatten().tolist()
             self.display_data(self.table2, self.data2)
-            
 
     def display_data(self, table, data):
         table.clear()
@@ -92,7 +104,8 @@ class Ui_Dialog(object):
             for j in range(data.shape[1]):
                 table.setItem(i, j, QtWidgets.QTableWidgetItem(str(data.iat[i, j])))
 
-        # Enable stretching of table columns and rows
+        
+        # Adjust the table to fit the content
         table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
 
@@ -113,16 +126,12 @@ class Ui_Dialog(object):
         self.highlight_text_lines(self.table1, match_set, check=True)
         self.highlight_text_lines(self.table2, match_set, check=False)
 
-        # Set the flag to indicate that the highlighting process is done
-        self.highlight_done = True
-
     def highlight_text_lines(self, table, match_set, check):
         for i in range(table.rowCount()):
             for j in range(table.columnCount()):
                 item = table.item(i, j)
                 if item:
                     text = item.text()
-                    norm_text = text.lower()
                     matched = False
                     # Check each word and its substrings against the match set
                     for word in match_set:
@@ -130,7 +139,6 @@ class Ui_Dialog(object):
                         if check: norm_best_match = self.dict_matches.get(text) 
                         else: norm_best_match = text
                         # Normalize the word and line to lowercase for case-insensitive comparison
-                        # if norm_word in norm_text or any(subword in norm_text for subword in norm_word.split()):
                         if norm_best_match == word:
                             item.setBackground(QtGui.QColor("green"))
                             matched = True
@@ -142,37 +150,44 @@ class Ui_Dialog(object):
                     #Add the list to the updated Excel file if no match.
                     if not matched and check:
                         self.replace_text = pd.concat([self.replace_text, pd.DataFrame({table.horizontalHeaderItem(j).text(): [text]})], ignore_index=True)
-        
+        self.adding_different_data = True
+        #O(n) to clear set
+        self.store.clear()
     def show_popup(self):
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Updated Excel Contents")
         dialog.resize(800, 600)
 
-        table = QtWidgets.QTableWidget(dialog)
-        table.setGeometry(QtCore.QRect(10, 10, 780, 580))
+        self.table = QtWidgets.QTableWidget(dialog)
+        self.table.setGeometry(QtCore.QRect(10, 10, 780, 580))
 
         # Set the number of rows and columns
-        table.setRowCount(self.replace_text.shape[0])
-        table.setColumnCount(self.replace_text.shape[1])
+        self.table.setRowCount(self.replace_text.shape[0])
+        self.table.setColumnCount(self.replace_text.shape[1])
 
         # Set the table headers
-        table.setHorizontalHeaderLabels(self.replace_text.columns.astype(str).tolist())
+        self.table.setHorizontalHeaderLabels(self.replace_text.columns.astype(str).tolist())
 
         #Populate the table with the data
         for i in range(self.replace_text.shape[0]):
             for j in range(self.replace_text.shape[1]):
-                table.setItem(i, j, QtWidgets.QTableWidgetItem(str(self.replace_text.iat[i, j])))
+                self.table.setItem(i, j, QtWidgets.QTableWidgetItem(str(self.replace_text.iat[i, j])))
 
-        # Enable stretching of table columns and rows
-        table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        # Adjust the table to fit the content
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+
         dialog.exec_()
 
     def replace_excel(self):
-        if (self.data1.empty or self.data2.empty) and not self.highlight_done:
+        # Threading for computational process to handle background tasks without suspending GUI
+        threading.Thread(target=self.run_replace_excel).start()
+
+    def run_replace_excel(self):
+        if (self.data1.empty or self.data2.empty or self.replace_text.empty):
             return
-        #Display recent new data
-        self.show_popup()
+        #Display recent new data and update the UI thread
+        self.update_ui_signal.emit()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
