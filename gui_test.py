@@ -30,10 +30,11 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         self.pushButton1.setGeometry(QtCore.QRect(100, 50, 200, 50))
         self.pushButton1.setText("Select Excel File")
 
-        # Button to select second Excel file
-        self.pushButton2 = QtWidgets.QPushButton(Dialog)
-        self.pushButton2.setGeometry(QtCore.QRect(700, 50, 200, 50))
-        self.pushButton2.setText("Select MetaData File")
+        # Dropdown to select metadata form
+        self.comboBox = QtWidgets.QComboBox(Dialog)
+        self.comboBox.setGeometry(QtCore.QRect(700, 50, 200, 50))
+        self.comboBox.addItem("NBISC Intake Form") 
+        self.comboBox.addItem("ODIC")  
 
 
         # Table to display data of the first file
@@ -54,8 +55,16 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
 
         # Connecting buttons to their respective slots
         self.pushButton1.clicked.connect(self.select_first_file)
-        self.pushButton2.clicked.connect(self.select_second_file)
         self.pushButton4.clicked.connect(self.highlight_matches)
+        #Default dropdown selection
+        #path/to/[X].xlsx
+        file = "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/NBISC Intake Form.xlsx"
+        df = pd.read_excel(file)
+        self.data2 = df 
+        self.list2 = df.astype(str).values.flatten().tolist()
+        self.display_data(self.table2, self.data2)
+        #Select metadata file
+        self.comboBox.currentIndexChanged.connect(self.select_metadata)
         
         #Update Excel file with new information
         self.pushButton3 = QtWidgets.QPushButton(Dialog)
@@ -85,9 +94,16 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
                         item.setBackground(QtGui.QColor("white"))
             self.adding_different_data = False
 
-    def select_second_file(self):
-        file, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select verified Excel file", "", "Excel file (*.xlsx)")
-        if file:
+    def select_metadata(self):
+         #All metadata files
+         #path/to/[X].xlsx
+        metadata_files = {
+            "NBISC Intake Form": "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/NBISC Intake Form.xlsx",
+            "ODIC": "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/ODIC.xlsx",
+        }
+        selected_metadata = self.comboBox.currentText()
+        if selected_metadata in metadata_files:
+            file = metadata_files[selected_metadata]
             df = pd.read_excel(file)
             self.data2 = df 
             self.list2 = df.astype(str).values.flatten().tolist()
