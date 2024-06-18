@@ -385,17 +385,20 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
             self.select_matching.parent().close()
 
     def realign_data(self):
-        match_rows, unmatched_items = self.collect_rows_by_background()
+        match_rows, unmatched_items, unmatched_items2, unmatched_item_color = self.collect_rows_by_background()
 
-        new_table1_data, new_table2_data = self.prepare_new_data(match_rows, unmatched_items)
+        new_table1_data, new_table2_data = self.prepare_new_data(match_rows, unmatched_items, unmatched_items2, unmatched_item_color)
 
         # Create new table1 with the new data in the main thread
         QtCore.QMetaObject.invokeMethod(self, "update_table1", QtCore.Qt.QueuedConnection,
-                                        QtCore.Q_ARG(object, new_table1_data))
+                                        QtCore.Q_ARG(object, new_table1_data),
+                                        QtCore.Q_ARG(object, new_table2_data))
 
     def collect_rows_by_background(self):
         match_rows = {}
         unmatched_items = []
+        unmatched_items2 = []
+        unmatched_items2_color = []
 
         # Collect rows by background color from table1
         for i in range(self.table1.rowCount()):
@@ -416,32 +419,42 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
                 if bg_color not in match_rows:
                     match_rows[bg_color] = {'table1': [], 'table2': []}
                 match_rows[bg_color]['table2'].append(item)
+                #Collect all non-white background colors in table2 that are not in table1
+                if match_rows[bg_color]['table1'] == []:
+                    unmatched_items2_color.append(item)
+            else:
+                unmatched_items2.append(item)
 
-        return match_rows, unmatched_items
 
-    def prepare_new_data(self, match_rows, unmatched_items):
+        return match_rows, unmatched_items, unmatched_items2, unmatched_items2_color
+
+    def prepare_new_data(self, match_rows, unmatched_items, unmatched_items2, unmatched_items2_color):
         new_table1_data = []
         new_table2_data = []
 
-        for bg_color, items in match_rows.items():
+        # Sort match rows by the background color to align exact matches together
+        sorted_bg_colors = sorted(match_rows.keys())
+
+        for bg_color in sorted_bg_colors:
+            items = match_rows[bg_color]
             table1_items = items['table1']
             table2_items = items['table2']
 
-            # Align all items from table1 with a single item from table2
-            if table2_items:
-                for table1_item in table1_items:
-                    new_table1_data.append(table1_item)
-                    # If there are multiple table2 items, align them sequentially
-                    for table2_item in table2_items:
-                        new_table2_data.append(table2_item)
+            if table2_items and table1_items:
+                # Align all items from table1 with the items from table2
+                new_table1_data.extend(table1_items)
+                new_table2_data.extend([table2_items[0]])
 
         # Append unmatched items at the end of new_table1_data
         new_table1_data.extend(unmatched_items)
+        new_table2_data.extend(unmatched_items2_color)
+        new_table2_data.extend(unmatched_items2)
+        # new_table2_data.extend([QtWidgets.QTableWidgetItem()] * len(unmatched_items))
 
         return new_table1_data, new_table2_data
 
-    @QtCore.pyqtSlot(object)
-    def update_table1(self, new_table1_data):
+    @QtCore.pyqtSlot(object, object)
+    def update_table1(self, new_table1_data, new_table2_data):
         new_table1 = CustomTableWidget(self.Dialog)
         new_table1.setMinimumSize(400, 200)
         new_table1.setColumnCount(1)
@@ -456,13 +469,35 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         new_table1.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         new_table1.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
 
-        # Clear the old left layout and add the new table1
+        new_table2 = CustomTableWidget(self.Dialog)
+        new_table2.setMinimumSize(400, 200)
+        new_table2.setColumnCount(1)
+        new_table2.setRowCount(len(new_table2_data))
+        for i, item in enumerate(new_table2_data):
+            new_item = QtWidgets.QTableWidgetItem(item.text())
+            new_item.setToolTip(item.toolTip())
+            new_item.setBackground(item.background())
+            new_table2.setItem(i, 0, new_item)
+        new_table2.setHorizontalHeaderLabels([self.table2.horizontalHeaderItem(i).text() for i in range(self.table2.columnCount())])
+        new_table2.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        new_table2.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        new_table2.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+
+        # Clear the old layout and add the new tables
+        self.tableLayout.removeWidget(self.table2)
+        self.table2.deleteLater()
+        self.table2 = CustomTableWidget(self.Dialog)
+        self.table2.setParent(None)
+        self.table2 = new_table2
+        self.tableLayout.addWidget(self.table2)
+
         self.tableLayout.removeWidget(self.table1)
         self.table1.deleteLater()
         self.table1 = CustomTableWidget(self.Dialog)
         self.table1.setParent(None)
         self.table1 = new_table1
         self.tableLayout.addWidget(self.table1)
+
         self.connect_table1_events()
 
     def clear_layout(self, layout):
@@ -474,6 +509,14 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
                     widget.deleteLater()
                 else:
                     self.clear_layout(item.layout())
+
+    def connect_table1_events(self):
+        self.table1.ctrlClicked.connect(self.handle_table1_ctrl_click)
+
+
+    def handle_table1_ctrl_click(self, item):
+        self.update_matches(item)
+
 
     def connect_table1_events(self):
         self.table1.itemClicked.connect(self.handle_table1_cell_click)
