@@ -131,9 +131,6 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         self.replace_text = pd.DataFrame()
         self.store = set()
         self.color_match = {}
-        self.pairs_matched = {}
-        self.new_background = {}
-        self.old_background = {}
         
         # Connect the signal to the slot
         self.update_ui_signal.connect(self.show_popup)
@@ -203,6 +200,11 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         # Connecting buttons to their respective slots
         self.pushButton1.clicked.connect(self.select_first_file)
         self.pushButton4.clicked.connect(self.highlight_matches)
+
+        #Progress Bar Widget
+        self.progressBar = QtWidgets.QProgressBar(self.Dialog)
+        self.progressBar.setValue(0)
+        self.topLayout.addWidget(self.progressBar)
 
 
         self.mainLayout.addLayout(self.topLayout)
@@ -300,12 +302,12 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
 
     def highlight_matches(self):
         # Progress dialog setup
-        self.progress_dialog = QtWidgets.QProgressDialog("Finding matches...", "Cancel", 0, 100, self.Dialog)
-        self.progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
-        self.progress_dialog.setAutoClose(False)
-        self.progress_dialog.setAutoReset(False)
-        self.progress_dialog.setCancelButton(None)
-        self.progress_dialog.show()
+        # self.progress_dialog = QtWidgets.QProgressDialog("Finding matches...", "Cancel", 0, 100, self.Dialog)
+        # self.progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
+        # self.progress_dialog.setAutoClose(False)
+        # self.progress_dialog.setAutoReset(False)
+        # self.progress_dialog.setCancelButton(None)
+        # self.progress_dialog.show()
 
         #Creating a worker object and QThread
         self.worker = Worker(self.data1, self.data2, self.list1, self.list2, self.table1, self.table2, self.replace_text)
@@ -313,19 +315,26 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         self.worker.moveToThread(self.thread)
 
         #Connecting the signals and slots
-        self.worker.progress_signal.connect(self.progress_dialog.setValue)
+        self.worker.progress_signal.connect(self.progressBar.setValue)
         self.worker.is_finished.connect(self.thread.quit)
         self.worker.is_finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        self.thread.finished.connect(self.progress_dialog.close)
+        self.thread.finished.connect(self.progressBar.close)
         #Reorder the matched highlighted data after thread is finished
         self.thread.finished.connect(self.realign_data)
+        #Restart the progress bar after highlighting matches
+        self.thread.finished.connect(self.restart_progress)
 
         #Run the worker object and thread while emitting_data to the main thread
         self.worker.emit_data.connect(self.handle_data_emit)
         self.thread.started.connect(self.worker.run)
         self.thread.start()
-
+        
+    #Restart the progress bar after highlighting matches
+    def restart_progress(self):
+        self.progressBar = QtWidgets.QProgressBar(self.Dialog)
+        self.progressBar.setValue(0)
+        self.topLayout.addWidget(self.progressBar)
 
     def show_popup(self):
         dialog = QtWidgets.QDialog()
@@ -586,22 +595,6 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
             new_item.setToolTip(item.toolTip())
             new_item.setBackground(item.background())
             self.table2.setItem(i, 1, new_item)
-
-
-    #Restore Table1 from table2 second column
-    def restore_table1_from_table2(self):
-        self.table1.setRowCount(self.data1.shape[1])
-        self.table1.setColumnCount(1)
-        for i in range(self.table2.rowCount()):
-            for j in range(1, 2):
-                source_item = self.table2.item(i, j)
-                if source_item:
-                    new_item = QtWidgets.QTableWidgetItem(source_item.text())
-                    new_item.setToolTip(source_item.toolTip())
-                    new_item.setBackground(source_item.background())
-                    self.table1.setItem(i, j, new_item)
-                else:
-                    self.table1.setItem(i, j, None)
 
 
     def handle_table1_ctrl_click(self, item):
