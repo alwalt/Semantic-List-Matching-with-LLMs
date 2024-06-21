@@ -38,13 +38,15 @@ def find_best_fuzzy_match(target, candidates, threshold=90):
     return best_match, highest_similarity
     
 
-def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatch]:
+def find_matches(first_list: List[str], second_list: List[str], progress_signal) -> List[ItemMatch]:
     matches = []
     #Kayvon: Dict of matches of item -> best match
     dict_matches = {}
     # Use a copy of the second list to manipulate without altering the original list outside the function
     available_matches = second_list.copy()
-    
+    #total items in first_list
+    total_items = len(first_list)
+    processed_items = 0
     for item in first_list:
         if not available_matches:
             print("No more matches available in second list.")
@@ -90,6 +92,10 @@ def find_matches(first_list: List[str], second_list: List[str]) -> List[ItemMatc
             # Append without a match or if the match is not in the available list
             matches.append(ItemMatch(match=None))
             print('---------------')
+        processed_items += 1
+        progress = int((processed_items / total_items) * 100)
+        print("Before emitting signal")
+        progress_signal.emit(progress)
     return matches, dict_matches
 
 #Example 
