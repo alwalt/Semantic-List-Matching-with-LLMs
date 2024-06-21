@@ -12,7 +12,9 @@ class ItemMatch(BaseModel):
 
 # Initialize the LLM model (Ollama)
 #wizardlm2:7b
-model = Ollama(model="wizardlm2:7b", base_url="http://localhost:11434/", temperature=0)
+#model = Ollama(model="wizardlm2:7b", base_url="http://localhost:11434/", temperature=0)
+model = Ollama(model="wizardlm2:7b", temperature=0)
+
 
 def find_best_fuzzy_match(target, candidates, threshold=90):
     """
