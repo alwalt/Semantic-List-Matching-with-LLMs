@@ -36,6 +36,7 @@ class Worker(QtCore.QObject):
 
     #Emit Data signal
     def process(self):
+        #Returns the updated class data to the main thread
         self.emit_data.emit((self.table1, self.table2, self.replace_text, self.match_to_color, self.dict_matches, self.is_matched, self.matches))
 
     #Run the worker thread
@@ -100,13 +101,13 @@ class Worker(QtCore.QObject):
                         #Add the list to the updated Excel file if no match.
                         if not matched and check:
                             item.setBackground(QtGui.QColor("white"))  
-                            self.match_to_color[item.text()] = QtGui.QColor("white")
+                            # self.match_to_color[item.text()] = QtGui.QColor("white")
                             self.replace_text = pd.concat([self.replace_text, pd.DataFrame({text: self.data1[item.toolTip()].iloc[:].to_list()})], axis=1)
                             #replace nans with empty strings
                             self.replace_text = self.replace_text.replace({pd.NA: ''})
                         if not matched and not check:
                             item.setBackground(QtGui.QColor("white"))  
-                            self.match_to_color[item.text()] = QtGui.QColor("white")
+                            # self.match_to_color[item.text()] = QtGui.QColor("white")
                     # Processing events to update the UI
                     QtWidgets.QApplication.processEvents()    
             self.adding_different_data = True 
@@ -176,6 +177,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
 
         #Add spacing
         self.tableLayout.addSpacing(100)
+
         # Table to display data of the first file
         self.table1 = CustomTableWidget(Dialog)
         self.table1.setMinimumSize(400, 200)
@@ -264,6 +266,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
 
         selected_metadata = self.comboBox.currentText()
         self.adding_different_data = True
+        #Choose the new selected metadata file from the dropdown list
         if selected_metadata in metadata_files:
             file = metadata_files[selected_metadata]
             df = pd.read_excel(file)
@@ -272,7 +275,6 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
             self.display_data(self.table2, self.data2, False)
 
     def display_data(self, table, data, check):
-        max_length = 50  # Maximum length of header to display
         table.clear()
         table.setRowCount(data.shape[1])
         if check:
@@ -284,11 +286,11 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
 
         #Populate the table with the data
         for i, header in enumerate(data.columns.tolist()):
-            # truncated_header = (header[:max_length] + '...') if len(header) > max_length else header
             item = QtWidgets.QTableWidgetItem(header)
             item.setToolTip(header)  # Set the full header as the tooltip
             table.setItem(i, 0, item)
         
+        #Adjusting the tables headers in case they don't appear
         if check:
             table.setHorizontalHeaderLabels(["Headers that Need Matching"])
             table.setColumnCount(1)
@@ -301,14 +303,6 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
 
     def highlight_matches(self):
-        # Progress dialog setup
-        # self.progress_dialog = QtWidgets.QProgressDialog("Finding matches...", "Cancel", 0, 100, self.Dialog)
-        # self.progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
-        # self.progress_dialog.setAutoClose(False)
-        # self.progress_dialog.setAutoReset(False)
-        # self.progress_dialog.setCancelButton(None)
-        # self.progress_dialog.show()
-
         #Creating a worker object and QThread
         self.worker = Worker(self.data1, self.data2, self.list1, self.list2, self.table1, self.table2, self.replace_text)
         self.thread = QtCore.QThread()
@@ -400,6 +394,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         for i, col_header in enumerate(column_data):
             item = QtWidgets.QTableWidgetItem(str(col_header))
             item.setToolTip(str(col_header))  # Set the full header as the tooltip
+
             #Filter out the nan values and duplicates
             if item.text() != 'nan' and item.text() not in seen_once:
                 seen_once.add(item.text())
@@ -446,11 +441,15 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
             # Update the item's background color to match the new selection
             rand = QtGui.QColor(QtCore.qrand() % 256, QtCore.qrand() % 256, QtCore.qrand() % 256)
             #Regenerate new seed if color already exists
-            for temp in self.match_to_color:
-                while rand == self.match_to_color[temp]:
-                    rand = QtGui.QColor(QtCore.qrand() % 256, QtCore.qrand() % 256, QtCore.qrand() % 256)
-                    break
-            self.match_to_color[match] = rand
+           
+            if self.match_to_color.get(match) == QtGui.QColor("white") or self.match_to_color.get(match) == None:
+                for temp in self.match_to_color:
+                    while rand == self.match_to_color[temp]:
+                        rand = QtGui.QColor(QtCore.qrand() % 256, QtCore.qrand() % 256, QtCore.qrand() % 256)
+                self.match_to_color[match] = rand
+            else:
+                rand = self.match_to_color[match]
+            self.match_to_color[item.text()] = rand
             self.table2.item(self.select_matching.currentIndex()-1, 0).setBackground(self.match_to_color[match])
             item.setBackground(self.match_to_color[match])
 
@@ -497,6 +496,8 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
                 #Collect all non-white background colors in table2 that are not in table1
                 if match_rows[bg_color]['table1'] == []:
                     unmatched_items2_color.append(item)
+                    self.match_to_color.pop(item.text())
+                    item.setBackground(QtGui.QColor("white"))
             else:
                 unmatched_items2.append(item)
 
@@ -524,7 +525,6 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         new_table1_data.extend(unmatched_items)
         new_table2_data.extend(unmatched_items2_color)
         new_table2_data.extend(unmatched_items2)
-        # new_table2_data.extend([QtWidgets.QTableWidgetItem()] * len(unmatched_items))
 
         return new_table1_data, new_table2_data
 
@@ -561,19 +561,24 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         # Clear the old tables and replace them with the new tables
         self.tableLayout.removeWidget(self.table1)
         self.tableLayout.removeWidget(self.table2)
-
+        self.table1.deleteLater()
         self.table2.deleteLater()
-        self.table2 = QtWidgets.QTableWidget(self.Dialog)
+
+        # Clear any spacing in the layout
+        while self.tableLayout.count():
+            item = self.tableLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
         self.table2.setParent(None)
         self.table2 = new_table2
+        
         #Set new_table1 data to the second column of table2 and populate table2
         self.populate_table2_col1(new_table1_data)
         self.tableLayout.addWidget(self.table2)
         
         #Add spacing
         self.tableLayout.addSpacing(50)
-
-        self.table1.deleteLater
         self.table1.setParent(None)
         self.table1 = new_table1
         self.tableLayout.addWidget(self.table1)
