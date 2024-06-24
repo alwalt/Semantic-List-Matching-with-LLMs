@@ -40,6 +40,7 @@ class Worker(QtCore.QObject):
     def process(self):
         #Returns the updated class data to the main thread
         self.emit_data.emit((self.table1, self.table2, self.replace_text, self.match_to_color, self.dict_matches, self.is_matched, self.matches))
+        #self.emit_data.emit((self.table1, self.table2, self.replace_text))
 
     #Run the worker thread
     def run(self):
@@ -52,6 +53,8 @@ class Worker(QtCore.QObject):
         #     self.is_finished.emit()
         #     return
         # Find matches between the twso file lists using LLM
+        print('matching the following two lits:', self.list1)
+        print(self.list2)
         self.matches, self.dict_matches = find_matches(self.list1, self.list2, self.progress_signal)
         
         # Convert matches to a set for faster lookup
@@ -137,7 +140,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
     def handle_data_emit(self, data):
         self.table1, self.table2, self.replace_text, self.match_to_color, self.dict_matches, self.is_matched, self.matches = data         
     def setupUi(self, Dialog):
-        Dialog.setObjectName("Test")
+        Dialog.setObjectName("NASA Data Standardization Toolkit")
         Dialog.resize(1000, 700)
         self.data_emit = QtCore.pyqtSignal(tuple) #Signal to emit data to the main thread
         #Save the Dialog
@@ -216,17 +219,19 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         
         #Default dropdown selection
         #path/to/[X].xlsx
-        file = "sample_nbisc.xlsx"
+        #file = "sample_nbisc.xlsx"
+        file = "sample_nbisc2.xlsx"
         df = pd.read_excel(file)
         self.data2 = df 
         self.list2 = df.columns.astype(str).tolist()
+        print(self.list2)
         self.display_data(self.table2, self.data2, False)
         #Select metadata file
         self.comboBox.currentIndexChanged.connect(self.select_metadata)
         
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Test", "Test"))
+        Dialog.setWindowTitle(_translate("NASA", "NASA Data Standardization Toolkit"))
 
     def select_first_file(self):
         file, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select unverified Excel file", "", "Excel file (*.xlsx)")
@@ -252,8 +257,8 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
          #All metadata files
          #path/to/[X].xlsx
         metadata_files = {
-            "NBISC Intake Form": "sample_nbisc.xlsx",
-            "ODIC": "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/test_output.xlsx",
+            "NBISC Intake Form": "sample_nbisc2.xlsx",
+            "ODIC": "sample_nbisc2.xlsx",
         }
         #Reset the highlighting process for first file
         for i in range(self.table1.rowCount()):
@@ -293,7 +298,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
             table.setHorizontalHeaderLabels(["Headers that Need Matching"])
             table.setColumnCount(1)
         else:
-            table.setHorizontalHeaderLabels(["MetaData", "LLM Matches"])
+            table.setHorizontalHeaderLabels(["Metadata", "LLM Matches"])
             table.setColumnCount(2)
 
         # Adjust the table to fit the content
