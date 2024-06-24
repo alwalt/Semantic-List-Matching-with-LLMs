@@ -1,5 +1,4 @@
 import sys
-import re
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pandas as pd
 from match_test import find_matches
@@ -33,6 +32,9 @@ class Worker(QtCore.QObject):
         self.replace_text = replace_text
         self.store = set()
         self.color_match = {}
+        self.match_to_color = {}
+        self.dict_matches = {}
+        self.is_matched = False
 
     #Emit Data signal
     def process(self):
@@ -43,11 +45,12 @@ class Worker(QtCore.QObject):
     def run(self):
         self.run_highlighting()
         self.process()
+
+    # Highlight the matches between the two files
     def run_highlighting(self):
-        # Highlight the matches between the two files
-        if self.data1.empty or self.data2.empty:
-            self.is_finished.emit()
-            return
+        # if self.data1.empty or self.data2.empty:
+        #     self.is_finished.emit()
+        #     return
         # Find matches between the twso file lists using LLM
         self.matches, self.dict_matches = find_matches(self.list1, self.list2, self.progress_signal)
         
@@ -55,7 +58,6 @@ class Worker(QtCore.QObject):
         match_set = set(match.match for match in self.matches if match.match)
 
         #Generate random colors for each match and mappings for each
-        self.match_to_color = {}
         for match in match_set:
             if match not in self.match_to_color:
                 self.match_to_color[match] = QtGui.QColor(QtCore.qrand() % 256, QtCore.qrand() % 256, QtCore.qrand() % 256)
@@ -94,20 +96,16 @@ class Worker(QtCore.QObject):
                                     self.store.add(word)
                                     #Merge matched words to the updated Excel file
                                     self.replace_text = pd.concat([self.replace_text, pd.DataFrame({text: self.data1[item.toolTip()].iloc[:].to_list()})], axis=1)
-                                    #replace nans with empty strings
-                                    self.replace_text = self.replace_text.replace({pd.NA: ''}) 
+                                   
                                 break
                                 
                         #Add the list to the updated Excel file if no match.
                         if not matched and check:
                             item.setBackground(QtGui.QColor("white"))  
-                            # self.match_to_color[item.text()] = QtGui.QColor("white")
                             self.replace_text = pd.concat([self.replace_text, pd.DataFrame({text: self.data1[item.toolTip()].iloc[:].to_list()})], axis=1)
-                            #replace nans with empty strings
-                            self.replace_text = self.replace_text.replace({pd.NA: ''})
                         if not matched and not check:
                             item.setBackground(QtGui.QColor("white"))  
-                            # self.match_to_color[item.text()] = QtGui.QColor("white")
+                            
                     # Processing events to update the UI
                     QtWidgets.QApplication.processEvents()    
             self.adding_different_data = True 
@@ -218,7 +216,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         
         #Default dropdown selection
         #path/to/[X].xlsx
-        file = "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/output.xlsx"
+        file = "sample_nbisc.xlsx"
         df = pd.read_excel(file)
         self.data2 = df 
         self.list2 = df.columns.astype(str).tolist()
@@ -254,7 +252,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
          #All metadata files
          #path/to/[X].xlsx
         metadata_files = {
-            "NBISC Intake Form": "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/output.xlsx",
+            "NBISC Intake Form": "sample_nbisc.xlsx",
             "ODIC": "C:/Users/kayvo/Semantic-List-Matching-with-LLMs/test_output.xlsx",
         }
         #Reset the highlighting process for first file
@@ -354,10 +352,10 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         layout.addWidget(self.saveCopy)
 
         #Populate the table with the data
+        self.replace_text.fillna('', inplace=True)
         for i in range(self.replace_text.shape[0]):
             for j in range(self.replace_text.shape[1]):
                 self.table.setItem(i, j, QtWidgets.QTableWidgetItem(str(self.replace_text.iat[i, j])))
-
         # Adjust the table to fit the content
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
@@ -370,7 +368,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         threading.Thread(target=self.run_replace_excel).start()
 
     def run_replace_excel(self):
-        if (self.data1.empty or self.data2.empty or self.replace_text.empty):
+        if (self.replace_text.empty):
             return
         #Display recent new data and update the UI thread
         self.update_ui_signal.emit()
@@ -586,7 +584,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         #Clear table1 background colors
         for i in range(self.table1.rowCount()):
             for j in range(self.table1.columnCount()):
-                item = self.table1.item(i, j)
+                item = self.table1.item(i, j) 
                 if item:
                     item.setBackground(QtGui.QColor("white"))
 
