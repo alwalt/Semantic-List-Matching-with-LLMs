@@ -94,7 +94,6 @@ def find_matches(first_list: List[str], second_list: List[str], progress_signal)
             print('---------------')
         processed_items += 1
         progress = int((processed_items / total_items) * 100)
-        print("Before emitting signal")
         progress_signal.emit(progress)
     return matches, dict_matches
 
