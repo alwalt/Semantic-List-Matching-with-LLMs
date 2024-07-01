@@ -1,6 +1,6 @@
 import sys
 import pandas as pd
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView
 
 class ExcelHeaderReader(QWidget):
     def __init__(self):
@@ -16,14 +16,10 @@ class ExcelHeaderReader(QWidget):
         
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
-       
-        self.comboBox = QComboBox(self)
-        self.comboBox.addItem("NBISC Intake Form")
-
+        
         self.btn = QPushButton('Open Excel File', self)
         self.btn.clicked.connect(self.showDialog)
         
-        left_layout.addWidget(self.comboBox) 
         left_layout.addWidget(self.btn)
         
         self.tableWidget = QTableWidget()
@@ -54,7 +50,7 @@ class ExcelHeaderReader(QWidget):
             error_dialog.exec_()
     
     def displayHeaders(self, headers):
-        max_length = 50  # Maximum length of header to dcisplay
+        max_length = 50  # Maximum length of header to display
         self.tableWidget.setRowCount(len(headers))
         self.tableWidget.setColumnCount(1)
         self.tableWidget.setHorizontalHeaderLabels(['Headers that Need Matching'])
@@ -69,4 +65,3 @@ if __name__ == '__main__':
     ex = ExcelHeaderReader()
     ex.show()
     sys.exit(app.exec_())
-

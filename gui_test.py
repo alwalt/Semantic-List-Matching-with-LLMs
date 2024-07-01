@@ -20,7 +20,7 @@ class Worker(QtCore.QObject):
     progress_signal  = QtCore.pyqtSignal(int)
     is_finished = QtCore.pyqtSignal()
     emit_data = QtCore.pyqtSignal(tuple)
-    def __init__(self, data1, data2, list1, list2, table1, table2, replace_text):
+    def __init__(self, data1, data2, list1, list2, table1, table2, replace_text, is_checked):
         super().__init__()
         self.data1 = data1
         self.data2 = data2
@@ -35,6 +35,7 @@ class Worker(QtCore.QObject):
         self.match_to_color = {}
         self.dict_matches = {}
         self.is_matched = False
+        self.is_checked = is_checked
 
     #Emit Data signal
     def process(self):
@@ -44,17 +45,18 @@ class Worker(QtCore.QObject):
 
     #Run the worker thread
     def run(self):
-        self.run_highlighting()
+        if self.is_checked:
+            self.run_highlighting()
+        else:
+            self.run_highlighting_noAI()
         self.process()
 
-    # Highlight the matches between the two files
+
+    #Highlight the matches between the two files using only Leichenstein Distance
+    def run_highlighting_noAI(self):
+        pass
+    # Highlight the matches between the two files using LLM and Leichenstein Distance
     def run_highlighting(self):
-        # if self.data1.empty or self.data2.empty:
-        #     self.is_finished.emit()
-        #     return
-        # Find matches between the twso file lists using LLM
-        print('matching the following two lits:', self.list1)
-        print(self.list2)
         self.matches, self.dict_matches = find_matches(self.list1, self.list2, self.progress_signal)
         
         # Convert matches to a set for faster lookup
@@ -79,8 +81,6 @@ class Worker(QtCore.QObject):
                     item = table.item(i, j)
                     if item:
                         text = item.text()
-                        # if check and (i, j) in highlighted_items:
-                        #     continue
                         matched = False
                         # Check each word and its substrings against the match set
                         for word in match_set:
@@ -157,6 +157,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         self.leftLayout = QtWidgets.QVBoxLayout()
         self.rightLayout = QtWidgets.QVBoxLayout()
         self.tableLayout= QtWidgets.QHBoxLayout()
+        self.bottomLayout = QtWidgets.QHBoxLayout()
 
         # Button to select first Excel file
         self.pushButton1 = QtWidgets.QPushButton(Dialog)
@@ -209,11 +210,18 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         self.progressBar.setValue(0)
         self.topLayout.addWidget(self.progressBar)
 
+        #Add checkmark on bottom to enable AI matching vs Leichenstein Distance
+        self.choose_option = QtWidgets.QCheckBox(Dialog)
+        self.choose_option.setText("Use AI Matching")
+        self.bottomLayout.addWidget(self.choose_option)
+
+
 
         self.mainLayout.addLayout(self.topLayout)
         self.mainLayout.addLayout(self.leftLayout)
         self.mainLayout.addLayout(self.rightLayout)
         self.mainLayout.addLayout(self.tableLayout)
+        self.mainLayout.addLayout(self.bottomLayout)
 
             
         
@@ -283,6 +291,10 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         if check:
             table.setHorizontalHeaderLabels(["Headers that Need Matching"])
             table.setColumnCount(1)
+
+            #Populate table2 with same row count as table1 if shmaller
+            if self.data1.shape[1] > self.data2.shape[1]:
+                self.table2.setRowCount(self.data1.shape[1])
         else:
             table.setHorizontalHeaderLabels(["MetaData", "LLM Matches"])
             table.setColumnCount(2)
@@ -307,7 +319,7 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
 
     def highlight_matches(self):
         #Creating a worker object and QThread
-        self.worker = Worker(self.data1, self.data2, self.list1, self.list2, self.table1, self.table2, self.replace_text)
+        self.worker = Worker(self.data1, self.data2, self.list1, self.list2, self.table1, self.table2, self.replace_text, self.choose_option)
         self.thread = QtCore.QThread()
         self.worker.moveToThread(self.thread)
 
@@ -422,7 +434,10 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         
         for i in range(self.table2.rowCount()):
             table2_item = self.table2.item(i, 0)
-            self.select_matching.addItem(table2_item.text())
+            try:
+                self.select_matching.addItem(table2_item.text())
+            except:
+                pass
        
 
         layout.addWidget(self.select_matching)
@@ -551,11 +566,17 @@ class Ui_Dialog(QtCore.QObject):  # Inheriting from QObject inorder to use signa
         new_table2.setMinimumSize(400, 200)
         new_table2.setColumnCount(2)
         new_table2.setRowCount(len(new_table2_data))
+        #Populate table2 with same row count as table1 if smaller
+        if new_table1.rowCount() > (self.table2.rowCount()):
+            new_table2.setRowCount(new_table1)
         for i, item in enumerate(new_table2_data):
-            new_item = QtWidgets.QTableWidgetItem(item.text())
-            new_item.setToolTip(item.toolTip())
-            new_item.setBackground(item.background())
-            new_table2.setItem(i, 0, new_item)
+            try:
+                new_item = QtWidgets.QTableWidgetItem(item.text())
+                new_item.setToolTip(item.toolTip())
+                new_item.setBackground(item.background())
+                new_table2.setItem(i, 0, new_item)
+            except:
+                pass
         new_table2.setHorizontalHeaderLabels(["MetaData", "LLM Matches"])
         new_table2.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         new_table2.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
